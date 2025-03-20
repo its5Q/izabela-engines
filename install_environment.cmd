@@ -1,0 +1,1 @@
+powershell .\install_environment.ps1
