@@ -22,7 +22,7 @@ New-Item -ItemType File -Path .\conda_install\activate_conda.ps1 -Value ('$env:P
 
 .\conda_install\Scripts\conda shell.powershell hook | Out-String | ?{$_} | Invoke-Expression
 
-.\conda_install\conda.exe create --no-shortcuts -y -k --prefix "./conda_env" python=3.10
+conda create --no-shortcuts -y -k --prefix "./conda_env" python=3.10
 
 conda activate base
 conda activate .\conda_env
@@ -55,3 +55,5 @@ switch($useCUDA) {
 }
 
 conda clean --all --force-pkgs-dirs -y
+
+write "Installation complete! If you didn't see any stuff in red above, you should be good. If there were errors, or the run_*.cmd scripts don't work after the environment installation, please file an issue on GitHub."
