@@ -27,11 +27,31 @@ New-Item -ItemType File -Path .\conda_install\activate_conda.ps1 -Value ('$env:P
 conda activate base
 conda activate .\conda_env
 
-conda install -y nvidia/label/cuda-12.8.1::cuda-runtime
-conda install -y nvidia::cudnn=9.8.0.87=cuda12.8
+Function Read-YesNoChoice {
+	Param (
+        [Parameter(Mandatory=$true)][String]$Title,
+		[Parameter(Mandatory=$true)][String]$Message,
+		[Parameter(Mandatory=$false)][Int]$DefaultOption = 0
+    )
+
+	$No = New-Object System.Management.Automation.Host.ChoiceDescription '&No', 'No'
+	$Yes = New-Object System.Management.Automation.Host.ChoiceDescription '&Yes', 'Yes'
+	$Options = [System.Management.Automation.Host.ChoiceDescription[]]($No, $Yes)
+
+	return $host.ui.PromptForChoice($Title, $Message, $Options, $DefaultOption)
+}
+
+$useCUDA = Read-YesNoChoice -Title "Enable NVIDIA GPU support?" -Message "This will download the CUDA runtime which will take about 6GB of disk space, but your GPU will be used instead of your CPU for engines which support it and the voice generation will be much faster. (you can always run on CPU with the run_cpu.cmd script)" -DefaultOption 1
 
 python -m pip install -r requirements.txt
-python -m pip uninstall -y onnxruntime
-python -m pip install onnxruntime-gpu
+
+switch($useCUDA) {
+    1 {
+        conda install -y nvidia/label/cuda-12.8.1::cuda-runtime
+        conda install -y nvidia::cudnn=9.8.0.87=cuda12.8
+        python -m pip uninstall -y onnxruntime
+        python -m pip install onnxruntime-gpu
+    }
+}
 
 conda clean --all --force-pkgs-dirs -y
