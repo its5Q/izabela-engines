@@ -21,7 +21,7 @@ A small implementation of a "Custom" TTS engine for [Izabela](https://github.com
 1. Download the [latest release](https://github.com/its5Q/izabela-engines/releases/latest), or clone the repository for the bleeding-edge version:
    ```
    git clone https://github.com/its5Q/izabela-engines.git
-   cd izabela-tts-engines
+   cd izabela-engines
    ```
 
 2. Run the installation script to set up the Conda environment:
@@ -56,11 +56,13 @@ The server will start on `http://127.0.0.1:8000`. It must always be running when
 5. Select any voice from the list.
 6. Enjoy your local and free TTS!
 
-## 🔧 Available Engines
+## Available Engines
 
 Currently implemented engines:
 
-- **[Kokoro](https://github.com/hexgrad/kokoro)** - A high-quality TTS engine with natural-sounding speech. Works well for longer sentences and sometimes struggles on shorter ones. Has voices for English, French, Spanish, Hindi, Italian, Brazilian Portugese, Japanese and Chinese, but languages other than English vary wildly in quality.
+- **[Kokoro](https://github.com/hexgrad/kokoro)** - A high-quality TTS engine with natural-sounding speech. Works well for longer sentences and sometimes struggles on shorter ones.  
+  **Supported languages**: English, French, Spanish, Hindi, Italian, Brazilian Portugese, Japanese and Chinese, but languages other than English vary wildly in quality.  
+  Doesn't require any additional setup, the model with all voices is downloaded automatically on first startup.
 
 More local engines are planned in the future, contributions are welcome!
 
