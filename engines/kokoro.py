@@ -77,13 +77,16 @@ class KokoroEngine(BaseEngine):
                 self._g2p = zh.ZHG2P()
             self.loaded_voice = voice.id
 
-        start_time = time.time()
-        phonemes, _ = self._g2p(text)
-        end_time = time.time()
-        logging.info(f"Phonemization took {end_time - start_time} seconds")
+        # Not using misaki for tokenization until I figure out why it's outputting wrong phonemes
+        # start_time = time.time()
+        # phonemes, _ = self._g2p(text)
+        # logging.info('Phonemes: ')
+        # print(phonemes)
+        # end_time = time.time()
+        # logging.info(f"Phonemization took {end_time - start_time} seconds")
 
         start_time = time.time()
-        samples, sample_rate = self._model.create(phonemes, voice=voice.id, is_phonemes=True)
+        samples, sample_rate = self._model.create(text, voice=voice.id, is_phonemes=False)
         end_time = time.time()
         logging.info(f"Model inference took {end_time - start_time} seconds")
         mp3_bytes = io.BytesIO()

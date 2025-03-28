@@ -18,17 +18,14 @@ A small implementation of a "Custom" TTS engine for [Izabela](https://github.com
 
 ### Installation
 
-1. Download the [latest release](https://github.com/its5Q/izabela-engines/releases/latest), or clone the repository for the bleeding-edge version:
+1. Download the [latest release](https://github.com/its5Q/izabela-engines/releases/latest), or clone the repository for the bleeding-edge version.
+   **Make sure that the path doesn't contain spaces or letters other than latin (ASCII), or the installation will not work!**
    ```
    git clone https://github.com/its5Q/izabela-engines.git
-   cd izabela-engines
-   ```
-
-2. Run the installation script to set up the Conda environment:
-   ```
-   install_environment.cmd
    ```
    
+
+2. Run the PowerShell script `install_environment.ps1` to install all the necessary dependencies by right-clicking it and selecting "Run with PowerShell"
    Follow the prompts to choose between CUDA acceleration (if you have a compatible GPU) or CPU-only mode.
 
 ### Running the Server
