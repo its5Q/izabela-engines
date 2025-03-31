@@ -26,7 +26,7 @@ A small implementation of a "Custom" TTS engine for [Izabela](https://github.com
    
 
 2. Run the PowerShell script `install_environment.ps1` to install all the necessary dependencies by right-clicking it and selecting "Run with PowerShell"
-   Follow the prompts to choose between CUDA acceleration (if you have a compatible GPU) or CPU-only mode.
+   Follow the prompts to choose between CUDA acceleration (if you have a compatible GPU) or CPU-only mode, and the port that the engine will run on (6556 by default).
 
 ### Running the Server
 
@@ -34,22 +34,22 @@ After installation, start the server using one of the following scripts:
 
 - For CUDA acceleration (GPU):
   ```
-  run_cuda.cmd
+  run_cuda.ps1
   ```
 
 - For CPU-only mode:
   ```
-  run_cpu.cmd
+  run_cpu.ps1
   ```
 
-The server will start on `http://127.0.0.1:8000`. It must always be running when you want to use it in Izabela
+The server will start on `http://127.0.0.1:6556` (or other port you've chosen). It must always be running when you want to use it in Izabela.
 
 ## Connecting to Izabela
 
 1. Open Izabela
 2. Go to Settings > Speech Engine
 3. Select the "Custom" engine
-4. Enter `http://127.0.0.1:8000` in the "API Endpoint" field. The API Key field can be left empty.
+4. Enter `http://127.0.0.1:6556` (or other port you've chosen) in the "API Endpoint" field. The API Key field can be left empty.
 5. Select any voice from the list.
 6. Enjoy your local and free TTS!
 

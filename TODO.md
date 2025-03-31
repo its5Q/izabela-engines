@@ -1,0 +1,3 @@
+- [ ] Move away from conda to python embed packages provided by Python
+- [ ] Figure out triton installation for model compilation to speed things up a bit
+- [ ] Implement piper engine
