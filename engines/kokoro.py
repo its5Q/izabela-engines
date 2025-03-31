@@ -4,52 +4,36 @@ import urllib.request
 import soundfile as sf
 import os
 
+import torch
+
 from engines.base import BaseEngine
 from models import Voice
 import logging
-from kokoro_onnx import Kokoro
+from kokoro import KPipeline, KModel
 from pathlib import Path
-from misaki import espeak, en, zh, ja
-from misaki.espeak import EspeakG2P
 
 logging.basicConfig(level=logging.INFO)
 
 class KokoroEngine(BaseEngine):
-    models_path = Path("models/kokoro")
-
     def __init__(self):
         self._g2p = None
-        self.loaded_voice = None
+        self.loaded_voice = 'af_heart'
 
         logging.info("Loading Kokoro model...")
-        if not self.models_path.exists():
-            self.models_path.mkdir(parents=True)
+        self._model = KModel('hexgrad/Kokoro-82M').to('cuda' if os.environ.get('IZABELA_USE_CUDA') else 'cpu').eval()
+        self._pipeline = KPipeline('a', model=self._model)
 
-        if not (self.models_path / "kokoro-v1.0.onnx").exists():
-            logging.info("Models not found locally, downloading... (~115MB)")
-            # if os.environ.get("IZABELA_USE_CUDA"):
-            #     model_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.fp16-gpu.onnx"
-            # else:
-            #     model_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx"
-            with urllib.request.urlopen("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.fp16-gpu.onnx") as resp:
-                with open(self.models_path / "kokoro-v1.0.onnx", "wb") as f:
-                    f.write(resp.read())
-
-            with urllib.request.urlopen("https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin") as resp:
-                with open(self.models_path / "voices-v1.0.bin", "wb") as f:
-                    f.write(resp.read())
-
-        if os.environ.get("IZABELA_USE_CUDA"):
-            os.environ["ONNX_PROVIDER"] = "CUDAExecutionProvider"
-        self._model = Kokoro(str((self.models_path / "kokoro-v1.0.onnx").absolute()), str((self.models_path / "voices-v1.0.bin").absolute()))
+        # TODO: figure out how to get triton working on Windows so we can compile models
+        # logging.info("Compiling Kokoro model. This might take some time, but will make the model run much faster.")
+        # self._model.compile()
 
     def list_voices(self) -> list[Voice]:
         lang_map = {'a': 'en-us', 'b': 'en-gb', 'e': 'es', 'f': 'fr-fr', 'h': 'hi', 'i': 'it', 'p': 'pt-br', 'j': 'ja', 'z': 'zh'}
         voices = []
-        for voice in self._model.get_voices():
+        for voice in ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx", "am_puck", "am_santa", "bf_alice", "bf_emma", "bf_isabella", "bf_lily", "bm_daniel", "bm_fable", "bm_george", "bm_lewis", "ef_dora", "em_alex", "em_santa", "ff_siwis", "hf_alpha", "hf_beta", "hm_omega", "hm_psi", "if_sara", "im_nicola", "jf_alpha", "jf_gongitsune", "jf_nezumi", "jf_tebukuro", "jm_kumo", "pf_dora", "pm_alex", "pm_santa", "zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi", "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"]:
             voices.append(Voice(
                 id=voice,
-                name=voice.split('_')[1].capitalize() + ' (' + ('Male' if voice[1] == 'm' else 'Female') + ') (' + lang_map[voice[0]] + ')',
+                name='Kokoro - ' + voice.split('_')[1].capitalize() + ' (' + ('Male' if voice[1] == 'm' else 'Female') + ') (' + lang_map[voice[0]] + ')',
                 category=self.__class__.__name__,
                 languageCode=lang_map[voice[0]]
             ))
@@ -57,38 +41,21 @@ class KokoroEngine(BaseEngine):
         return voices
 
     def synthesize_voice(self, voice: Voice, text: str) -> bytes:
-        if self.loaded_voice != voice.id:
-            if voice.languageCode in {'en-us', 'en-gb'}:
-                fallback = espeak.EspeakFallback(british=voice.languageCode == 'en-gb')
-                self._g2p = en.G2P(trf=False, british=voice.languageCode == 'en-gb', fallback=fallback)
-            elif voice.languageCode == 'fr-fr':
-                self._g2p = EspeakG2P(language='fr-fr')
-            elif voice.languageCode == 'es':
-                self._g2p = EspeakG2P(language='es')
-            elif voice.languageCode == 'hi':
-                self._g2p = EspeakG2P(language='hi')
-            elif voice.languageCode == 'it':
-                self._g2p = EspeakG2P(language='it')
-            elif voice.languageCode == 'pt-br':
-                self._g2p = EspeakG2P(language='pt-br')
-            elif voice.languageCode == 'ja':
-                self._g2p = ja.JAG2P()
-            elif voice.languageCode == 'zh':
-                self._g2p = zh.ZHG2P()
+        if self.loaded_voice[0] != voice.id[0]:
+            logging.info(f'Loading pipeline for language {voice.languageCode}...')
+            self._pipeline = KPipeline(voice.id[0], model=self._model)
             self.loaded_voice = voice.id
 
-        # Not using misaki for tokenization until I figure out why it's outputting wrong phonemes
-        # start_time = time.time()
-        # phonemes, _ = self._g2p(text)
-        # logging.info('Phonemes: ')
-        # print(phonemes)
-        # end_time = time.time()
-        # logging.info(f"Phonemization took {end_time - start_time} seconds")
-
         start_time = time.time()
-        samples, sample_rate = self._model.create(text, voice=voice.id, is_phonemes=False)
+        generator = self._pipeline(text, voice=voice.id)
+        samples = None
+        for i, (gs, ps, audio) in enumerate(generator):
+            if samples is None:
+                samples = audio
+            else:
+                samples = torch.cat((samples, audio))
         end_time = time.time()
-        logging.info(f"Model inference took {end_time - start_time} seconds")
+        logging.info(f"Generation took {end_time - start_time} seconds")
         mp3_bytes = io.BytesIO()
-        sf.write(file=mp3_bytes, samplerate=sample_rate, data=samples, format='MP3', bitrate_mode='VARIABLE', compression_level=0.25)
+        sf.write(file=mp3_bytes, samplerate=24000, data=samples, format='MP3', bitrate_mode='VARIABLE', compression_level=0.25)
         return mp3_bytes.getvalue()

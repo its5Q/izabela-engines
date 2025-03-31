@@ -43,14 +43,13 @@ Function Read-YesNoChoice {
 
 $useCUDA = Read-YesNoChoice -Title "Enable NVIDIA GPU support?" -Message "This will download the CUDA runtime which will take about 6GB of disk space, but your GPU will be used instead of your CPU for engines which support it and the voice generation will be much faster. (you can always run on CPU with the run_cpu.cmd script)" -DefaultOption 1
 
+python -m pip install --pre -U torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 python -m pip install -r requirements.txt
 
 switch($useCUDA) {
     1 {
         conda install -y nvidia/label/cuda-12.8.1::cuda-runtime
         conda install -y nvidia::cudnn=9.8.0.87=cuda12.8
-        python -m pip uninstall -y onnxruntime
-        python -m pip install onnxruntime-gpu
     }
 }
 
