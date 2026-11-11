@@ -1,15 +1,19 @@
-import io
+from collections.abc import Iterator
 import logging
 import os
 import threading
 import time
 
 import numpy as np
-import soundfile as sf
 import torch
 from kokoro import KModel, KPipeline
 
-from engines.base import BaseEngine
+from engines.base import (
+    BaseEngine,
+    encode_mp3,
+    encode_silence_mp3,
+    stream_mp3,
+)
 from models import Voice
 
 logger = logging.getLogger(__name__)
@@ -27,6 +31,7 @@ LANG_MAP = {
     "j": "ja",
     "z": "zh",
 }
+STREAM_SPLIT_PATTERN = r"(?:\n+|(?<=[.!?。！？])\s+|(?<=[。！？]))"
 VOICES = [
     "af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_kore",
     "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky",
@@ -83,6 +88,7 @@ def _select_device() -> str:
         return "cpu"
 
 
+
 class KokoroEngine(BaseEngine):
     def __init__(self):
         self._lock = threading.Lock()
@@ -129,30 +135,50 @@ class KokoroEngine(BaseEngine):
 
     def synthesize_voice(self, voice: Voice, text: str) -> bytes:
         if not text or not text.strip():
-            samples = np.zeros(int(SAMPLE_RATE * 0.1), dtype=np.float32)
-        else:
-            with self._lock:
-                pipeline = self._get_pipeline(voice.id[0], voice.languageCode)
-                start_time = time.perf_counter()
-                chunks: list[torch.Tensor] = []
-                for result in pipeline(text, voice=voice.id):
-                    if result.audio is not None:
-                        chunks.append(result.audio)
-                elapsed = time.perf_counter() - start_time
-                logger.info("Synthesized speech with %s in %.3fs", voice.id, elapsed)
+            return encode_silence_mp3(SAMPLE_RATE)
 
-            if chunks:
-                samples = torch.cat(chunks).numpy()
-            else:
-                samples = np.zeros(int(SAMPLE_RATE * 0.1), dtype=np.float32)
+        with self._lock:
+            pipeline = self._get_pipeline(voice.id[0], voice.languageCode)
+            start_time = time.perf_counter()
+            chunks: list[torch.Tensor] = []
+            for result in pipeline(text, voice=voice.id):
+                if result.audio is not None:
+                    chunks.append(result.audio)
+            elapsed = time.perf_counter() - start_time
+            logger.info("Synthesized speech with %s in %.3fs", voice.id, elapsed)
 
-        mp3_bytes = io.BytesIO()
-        sf.write(
-            file=mp3_bytes,
-            samplerate=SAMPLE_RATE,
-            data=samples,
-            format="MP3",
-            bitrate_mode="VARIABLE",
-            compression_level=0.25,
-        )
-        return mp3_bytes.getvalue()
+        if not chunks:
+            return encode_silence_mp3(SAMPLE_RATE)
+
+        samples = torch.cat(chunks).numpy()
+        return encode_mp3(samples, SAMPLE_RATE)
+
+    def _iter_pcm_chunks(self, voice: Voice, text: str) -> Iterator[np.ndarray]:
+        with self._lock:
+            pipeline = self._get_pipeline(voice.id[0], voice.languageCode)
+            stream = pipeline(
+                text,
+                voice=voice.id,
+                split_pattern=STREAM_SPLIT_PATTERN,
+            )
+
+        try:
+            while True:
+                with self._lock:
+                    result = next(stream, None)
+                if result is None:
+                    break
+                if result.audio is not None:
+                    yield result.audio.numpy()
+        finally:
+            stream.close()
+
+    def synthesize_voice_stream(self, voice: Voice, text: str) -> Iterator[bytes]:
+        if not text or not text.strip():
+            yield encode_silence_mp3(SAMPLE_RATE)
+            return
+
+        start_time = time.perf_counter()
+        yield from stream_mp3(self._iter_pcm_chunks(voice, text), SAMPLE_RATE)
+        elapsed = time.perf_counter() - start_time
+        logger.info("Streamed speech with %s in %.3fs", voice.id, elapsed)
