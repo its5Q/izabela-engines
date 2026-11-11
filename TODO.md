@@ -1,3 +1,3 @@
 - [x] Move away from conda to Docker for reproducible setup
 - [ ] Figure out triton / `torch.compile` setup to speed things up
-- [ ] Implement piper engine
+- [x] Implement piper engine

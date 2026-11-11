@@ -16,7 +16,10 @@ Currently implemented engines:
 
 - **[Kokoro](https://github.com/hexgrad/kokoro)** - A high-quality 82M-parameter TTS engine with natural-sounding speech. Works well for longer sentences and sometimes struggles on shorter ones.
   **Supported languages:** English (US & GB), French, Spanish, Hindi, Italian, Brazilian Portuguese, Japanese, and Mandarin Chinese (non-English quality varies).
-  Models and voices are downloaded automatically on first use and persisted in the `izabela-hf-cache` Docker volume.
+  Models and voices are downloaded automatically on first use and persisted in the cache volume.
+- **[Piper](https://github.com/OHF-Voice/piper1-gpl)** - A fast, ultra-low-latency ONNX neural TTS engine (~16–28M parameters per voice) optimized for CPU inference and short conversational phrases.
+  **Supported languages:** 50+ language/region locales from the official [`rhasspy/piper-voices`](https://huggingface.co/rhasspy/piper-voices) catalog (English, German, French, Spanish, Italian, Portuguese, Polish, Russian, Ukrainian, Japanese, Mandarin Chinese, Arabic, Hindi, Korean, and more).
+  Each selected voice model (~25–115 MB) is downloaded lazily on first use and persisted in the cache volume.
 
 More local engines are planned in the future - contributions are welcome!
 

@@ -32,6 +32,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}" \
     HF_HOME="/data/huggingface" \
+    IZABELA_PIPER_CACHE_DIR="/data/huggingface/piper" \
     PORT=6556
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,7 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 --shell /usr/sbin/nologin appuser \
-    && mkdir -p /app /data/huggingface \
+    && mkdir -p /app /data/huggingface/piper \
     && chown -R appuser:appuser /app /data
 
 COPY --from=builder /opt/venv /opt/venv

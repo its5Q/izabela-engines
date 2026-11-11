@@ -2,6 +2,7 @@ fastapi~=0.162.4
 uvicorn[standard]~=0.54.0
 pydantic~=2.14.3
 kokoro~=0.9.4
+piper-tts[ja,zh]~=1.8.0
 misaki[en,ja,zh]~=0.9.4
 spacy-curated-transformers<2.0
 unidic-lite~=1.0.8
