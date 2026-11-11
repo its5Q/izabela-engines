@@ -1,3 +1,3 @@
-- [ ] Move away from conda to python embed packages provided by Python
-- [ ] Figure out triton installation for model compilation to speed things up a bit
+- [x] Move away from conda to Docker for reproducible setup
+- [ ] Figure out triton / `torch.compile` setup to speed things up
 - [ ] Implement piper engine

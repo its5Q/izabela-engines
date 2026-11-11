@@ -1,74 +1,98 @@
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
-
-from fastapi import FastAPI, Body
-from fastapi.responses import Response
-from fastapi.middleware.cors import CORSMiddleware
 import importlib.util
-import pathlib
 import inspect
-from models import *
+import logging
+import pathlib
+
+from fastapi import Body, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+
 from engines.base import BaseEngine
+from models import Credentials, SynthesizePayload, Voice
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Loading engines
 engines: list[BaseEngine] = []
 engine_map: dict[str, int] = {}
 
-engines_path = pathlib.Path('engines')
+engines_path = pathlib.Path(__file__).resolve().parent / "engines"
 
-for engine_file in engines_path.glob("*.py"):
+for engine_file in sorted(engines_path.glob("*.py")):
     module_name = engine_file.stem
-
-    if module_name == "__init__" or module_name == "base":
+    if module_name in {"__init__", "base"}:
         continue
 
     spec = importlib.util.spec_from_file_location(module_name, str(engine_file))
+    if spec is None or spec.loader is None:
+        continue
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    classes = [obj for name, obj in inspect.getmembers(module, inspect.isclass)]
-    engine = next((_class for _class in classes if _class.__base__ is BaseEngine), None)
+    classes = [obj for _, obj in inspect.getmembers(module, inspect.isclass)]
+    engine_cls = next(
+        (cls for cls in classes if issubclass(cls, BaseEngine) and cls is not BaseEngine),
+        None,
+    )
 
-    if engine:
-        engine_map[engine.__name__] = len(engines)
-        engines.append(engine())
+    if engine_cls:
+        engine_map[engine_cls.__name__] = len(engines)
+        engines.append(engine_cls())
     else:
-        print(f"Failed to find engine class in {engine_file.name}")
-
+        logger.warning("Failed to find engine class in %s", engine_file.name)
 
 # Voice list
-voices = []
+voices: list[Voice] = []
+for engine in engines:
+    voices.extend(engine.list_voices())
 
-for i, engine in enumerate(engines):
-    engine_voices = engine.list_voices()
-    voices.extend(engine_voices)
+logger.info("Loaded %d voices from %d engines", len(voices), len(engines))
 
-logging.info(f"Loaded {len(voices)} voices from {len(engines)} engines")
-app = FastAPI()
+app = FastAPI(title="Izabela Engines")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.post('/list-voices')
-def list_voices(credentials: Credentials = Body(..., embed=True)) -> list[Voice]:
+
+@app.get("/health")
+def health() -> dict[str, str | int]:
+    return {"status": "ok", "engines": len(engines), "voices": len(voices)}
+
+
+@app.post("/list-voices")
+def list_voices(
+    credentials: Credentials = Body(default_factory=Credentials, embed=True),
+) -> list[Voice]:
     return voices
 
-@app.post('/synthesize-speech', responses = {
-        200: {
-            "content": {"audio/mp3": {}}
-        }
-    }, response_class=Response)
-def synthesize_speech(credentials: Credentials, payload: SynthesizePayload):
+
+@app.post(
+    "/synthesize-speech",
+    responses={200: {"content": {"audio/mpeg": {}}}},
+    response_class=Response,
+)
+@app.post(
+    "/synthesize-speech/stream",
+    responses={200: {"content": {"audio/mpeg": {}}}},
+    response_class=Response,
+)
+def synthesize_speech(
+    payload: SynthesizePayload,
+    credentials: Credentials = Body(default_factory=Credentials),
+    includeTimestamps: bool = Body(default=False),
+) -> Response:
     voice = payload.voice
-    if voice not in voices:
+    if voice not in voices or voice.category not in engine_map:
         return Response(status_code=400, content="Voice not found")
 
     mp3_bytes = engines[engine_map[voice.category]].synthesize_voice(voice, payload.text)
-    return Response(status_code=200, content=mp3_bytes, media_type='audio/mp3')
-
+    return Response(status_code=200, content=mp3_bytes, media_type="audio/mpeg")

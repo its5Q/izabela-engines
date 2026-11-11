@@ -1,0 +1,70 @@
+x-common: &common
+  working_dir: /app
+  ports:
+    - "127.0.0.1:${IZABELA_PORT:-6556}:6556"
+  volumes:
+    - izabela-hf-cache:/data/huggingface
+  restart: unless-stopped
+
+services:
+  # CPU-only mode (works on any Windows, macOS, or Linux machine)
+  # Start with: docker compose --profile cpu up -d --build
+  cpu:
+    <<: *common
+    profiles: ["cpu"]
+    image: izabela-engines:cpu
+    build:
+      context: .
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cpu
+        TORCH_VERSION: "2.15.0"
+    environment:
+      IZABELA_USE_CUDA: "0"
+      PORT: "6556"
+
+  # Modern NVIDIA GPU mode: GTX 16-series & RTX 20 / 30 / 40 / 50-series (Turing through Blackwell)
+  # Start with: docker compose --profile cuda up -d --build
+  cuda:
+    <<: *common
+    profiles: ["cuda"]
+    image: izabela-engines:cuda
+    build:
+      context: .
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cu132
+        TORCH_VERSION: "2.15.0"
+    environment:
+      IZABELA_USE_CUDA: "1"
+      PORT: "6556"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Legacy NVIDIA GPU mode: GTX 900 & GTX 10-series (Maxwell / Pascal / Volta, plus RTX 20–40)
+  # Start with: docker compose --profile cuda-legacy up -d --build
+  cuda-legacy:
+    <<: *common
+    profiles: ["cuda-legacy"]
+    image: izabela-engines:cuda-legacy
+    build:
+      context: .
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cu126
+        TORCH_VERSION: "2.14.1"
+    environment:
+      IZABELA_USE_CUDA: "1"
+      PORT: "6556"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  izabela-hf-cache:

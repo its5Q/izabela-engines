@@ -1,7 +1,12 @@
-fastapi[standard]~=0.115.11
-pydantic~=2.10.6
-misaki[en]~=0.9.3
-misaki[ja]~=0.9.3
-misaki[zh]~=0.9.3
-soundfile~=0.13.1
-kokoro
+fastapi~=0.162.4
+uvicorn[standard]~=0.54.0
+pydantic~=2.14.3
+kokoro~=0.9.4
+misaki[en,ja,zh]~=0.9.4
+spacy-curated-transformers<2.0
+unidic-lite~=1.0.8
+soundfile~=0.14.0
+spacy~=3.8.18
+huggingface-hub~=2.4.0
+transformers~=5.22.2
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

@@ -1,0 +1,33 @@
+# Local environments and caches
+*conda*
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Version control & IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Models and local artifacts
+models/
+dist/
+build/
+*.mp3
+*.wav
+*.log
+
+# Documentation & local config
+README.md
+TODO.md
+.env
+config.ps1
+test.ps1
+testing.py
