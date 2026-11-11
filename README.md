@@ -57,7 +57,7 @@ Make sure Docker Desktop (or Docker Engine) is running, open a terminal in the p
   docker compose --profile cpu up -d --build
   ```
 
-> **First-run note:** The initial build downloads dependencies, and the first startup downloads the Kokoro voice model (~330 MB) into a Docker volume so subsequent startups are fast. You can watch startup progress with:
+> **First-run note:** The initial build downloads dependencies. Engine models (e.g. Kokoro, ~330 MB) are loaded lazily on first speech synthesis and cached in a persistent Docker volume so subsequent runs are fast. You can watch server logs with:
 > ```sh
 > docker compose logs -f
 > ```

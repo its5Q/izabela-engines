@@ -50,7 +50,11 @@ voices: list[Voice] = []
 for engine in engines:
     voices.extend(engine.list_voices())
 
-logger.info("Loaded %d voices from %d engines", len(voices), len(engines))
+logger.info(
+    "Registered %d voices across %d engines",
+    len(voices),
+    len(engines),
+)
 
 app = FastAPI(title="Izabela Engines")
 
@@ -65,7 +69,12 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict[str, str | int]:
-    return {"status": "ok", "engines": len(engines), "voices": len(voices)}
+    return {
+        "status": "ok",
+        "engines": len(engines),
+        "loaded_engines": sum(1 for engine in engines if engine.is_loaded),
+        "voices": len(voices),
+    }
 
 
 @app.post("/list-voices")
@@ -95,6 +104,8 @@ def synthesize_speech(
     if engine is None:
         return Response(status_code=400, content="Voice not found")
 
+    if payload.text and payload.text.strip():
+        engine.ensure_loaded()
     mp3_bytes = engine.synthesize_voice(payload.voice, payload.text)
     return Response(status_code=200, content=mp3_bytes, media_type="audio/mpeg")
 
@@ -113,6 +124,8 @@ def synthesize_speech_stream(
     if engine is None:
         return Response(status_code=400, content="Voice not found")
 
+    if payload.text and payload.text.strip():
+        engine.ensure_loaded()
     if engine.supports_streaming:
         return StreamingResponse(
             engine.synthesize_voice_stream(payload.voice, payload.text),

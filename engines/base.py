@@ -1,5 +1,6 @@
 from collections.abc import Iterable, Iterator
 import io
+import threading
 
 import numpy as np
 import soundfile as sf
@@ -127,8 +128,26 @@ def stream_mp3(
 class BaseEngine:
     models_path: str = None
 
-    def __init__(self):
-        raise NotImplementedError("Can't instantiate base class")
+    def __init__(self) -> None:
+        if type(self) is BaseEngine:
+            raise NotImplementedError("Can't instantiate base class")
+        self._load_lock = threading.Lock()
+        self._is_loaded = False
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._is_loaded
+
+    def _load_model(self) -> None:
+        pass
+
+    def ensure_loaded(self) -> None:
+        if self._is_loaded:
+            return
+        with self._load_lock:
+            if not self._is_loaded:
+                self._load_model()
+                self._is_loaded = True
 
     @property
     def supports_streaming(self) -> bool:

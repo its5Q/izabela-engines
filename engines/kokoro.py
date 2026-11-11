@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterator
 import logging
 import os
@@ -5,8 +7,11 @@ import threading
 import time
 
 import numpy as np
-import torch
-from kokoro import KModel, KPipeline
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import torch
+    from kokoro import KModel, KPipeline
 
 from engines.base import (
     BaseEngine,
@@ -58,6 +63,8 @@ def _select_device() -> str:
         logger.info("Using CPU for Kokoro inference.")
         return "cpu"
 
+    import torch
+
     if not torch.cuda.is_available():
         logger.warning(
             "IZABELA_USE_CUDA is enabled, but no CUDA GPU was detected. Falling back to CPU."
@@ -90,19 +97,31 @@ def _select_device() -> str:
 
 
 class KokoroEngine(BaseEngine):
-    def __init__(self):
+    def __init__(self) -> None:
+        super().__init__()
         self._lock = threading.Lock()
-        self._device = _select_device()
+        self._device: str | None = None
+        self._model: KModel | None = None
+        self._pipelines: dict[str, KPipeline] = {}
 
-        logger.info("Loading Kokoro model (%s) on %s...", REPO_ID, self._device)
-        self._model = KModel(repo_id=REPO_ID).to(self._device).eval()
-        self._pipelines: dict[str, KPipeline] = {
-            "a": KPipeline(lang_code="a", repo_id=REPO_ID, model=self._model),
+    def _load_model(self) -> None:
+        from kokoro import KModel, KPipeline
+
+        device = _select_device()
+        logger.info("Loading Kokoro model (%s) on %s...", REPO_ID, device)
+        model = KModel(repo_id=REPO_ID).to(device).eval()
+        pipelines: dict[str, KPipeline] = {
+            "a": KPipeline(lang_code="a", repo_id=REPO_ID, model=model),
         }
+        self._device = device
+        self._model = model
+        self._pipelines = pipelines
 
     def _get_pipeline(self, lang_code: str, language_label: str) -> KPipeline:
         pipeline = self._pipelines.get(lang_code)
         if pipeline is None:
+            from kokoro import KPipeline
+
             logger.info("Loading Kokoro pipeline for language %s...", language_label)
             en_callable = None
             if lang_code == "z":
@@ -137,7 +156,11 @@ class KokoroEngine(BaseEngine):
         if not text or not text.strip():
             return encode_silence_mp3(SAMPLE_RATE)
 
+        self.ensure_loaded()
+
         with self._lock:
+            import torch
+
             pipeline = self._get_pipeline(voice.id[0], voice.languageCode)
             start_time = time.perf_counter()
             chunks: list[torch.Tensor] = []
@@ -177,6 +200,8 @@ class KokoroEngine(BaseEngine):
         if not text or not text.strip():
             yield encode_silence_mp3(SAMPLE_RATE)
             return
+
+        self.ensure_loaded()
 
         start_time = time.perf_counter()
         yield from stream_mp3(self._iter_pcm_chunks(voice, text), SAMPLE_RATE)
